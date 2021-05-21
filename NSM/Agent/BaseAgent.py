@@ -39,11 +39,13 @@ class BaseAgent(nn.Module):
         self.reset_time = 0
 
     @staticmethod
+    #获取batchsize个对应batch的query_embedding
+
     def get_node_emb(query_hidden_emb, action):
         '''
-
+    # query_hidden_emb是question送入lstm最后一个layer的h0 - hn（横向）,,不应该是【seq_len,batch,num_directions*hidden_size】吗？max_hyper是什么东西
         :param query_hidden_emb: (batch_size, max_hyper, emb)
-        :param action: (batch_size)
+        :param action: (batch_size)  action是什么东西
         :return: (batch_size, emb)
         '''
         batch_size, max_hyper, _ = query_hidden_emb.size()
@@ -52,9 +54,13 @@ class BaseAgent(nn.Module):
         return q_rep
 
     def deal_input_seq(self, batch):
+        #将batch数据的numpy转化为tensor并挂载到device上面
+
         # local_entity, query_entities, kb_adj_mat, query_text, seed_dist, answer_dist = batch
         local_entity, query_entities, kb_adj_mat, query_text, seed_dist, true_batch_id, answer_dist = batch
         local_entity = torch.from_numpy(local_entity).type('torch.LongTensor').to(self.device)
+        #torch.from_numpy是将numpy转化为tensor 然后.to(device)是将其放到GPU上运行 （numpy只能在CPU运行 Torch可以在GPU上运行）
+
         # local_entity_mask = (local_entity != self.num_entity).float()
         query_entities = torch.from_numpy(query_entities).type('torch.FloatTensor').to(self.device)
         answer_dist = torch.from_numpy(answer_dist).type('torch.FloatTensor').to(self.device)

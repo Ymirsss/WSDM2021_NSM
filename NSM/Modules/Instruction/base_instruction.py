@@ -7,7 +7,7 @@ import time
 import numpy as np
 VERY_SMALL_NUMBER = 1e-10
 VERY_NEG_NUMBER = -100000000000
-
+#定义了一个Instructor构建框架，定义了一些参数和方法名，相当于java里的抽象类？反正seq——instruction是构建论文里instructor的代码，他用到了baseInstruction的东西
 
 class BaseInstruction(torch.nn.Module):
 

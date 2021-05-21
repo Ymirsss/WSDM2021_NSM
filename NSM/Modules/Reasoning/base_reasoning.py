@@ -14,6 +14,7 @@ class BaseReasoning(torch.nn.Module):
 
     def __init__(self, args, num_entity, num_relation):
         super(BaseReasoning, self).__init__()
+        #some setting
         self.num_relation = num_relation
         self.num_entity = num_entity
         self.use_inverse_relation = args['use_inverse_relation']
@@ -41,7 +42,7 @@ class BaseReasoning(torch.nn.Module):
         self.linear_drop = nn.Dropout(p=self.linear_dropout)
 
     def build_matrix(self):
-        batch_heads, batch_rels, batch_tails, batch_ids, fact_ids, weight_list = self.edge_list
+        batch_heads, batch_rels, batch_tails, batch_ids, fact_ids, weight_list = self.edge_list#edge_list的每一项是每条记录对应的facts矩阵
         num_fact = len(fact_ids)
         num_relation = self.num_relation
         batch_size = self.batch_size
@@ -50,7 +51,7 @@ class BaseReasoning(torch.nn.Module):
         fact2head = torch.LongTensor([batch_heads, fact_ids]).to(self.device)
         fact2tail = torch.LongTensor([batch_tails, fact_ids]).to(self.device)
         head2fact = torch.LongTensor([fact_ids, batch_heads]).to(self.device)
-        tail2fact = torch.LongTensor([fact_ids, batch_tails]).to(self.device)
+        tail2fact = torch.LongTensor([fact_ids, batch_tails]).to(self.device)#LongTensor long类型的tensor
         rel2fact = torch.LongTensor([batch_rels + batch_ids * num_relation, fact_ids]).to(self.device)
         self.batch_rels = torch.LongTensor(batch_rels).to(self.device)
         self.batch_ids = torch.LongTensor(batch_ids).to(self.device)

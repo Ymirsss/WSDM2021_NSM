@@ -112,11 +112,12 @@ def main():
         os.mkdir(args.checkpoint_dir)
     logger = create_logger(args)
     trainer = Trainer_KBQA(args=vars(args), logger=logger)
-    if not args.is_eval:
+    if not args.is_eval:#重头训练
         trainer.train(0, args.num_epoch - 1)
     else:
         assert args.load_experiment is not None
         if args.load_experiment is not None:
+            #加载训练过的模型
             ckpt_path = os.path.join(args.checkpoint_dir, args.load_experiment)
             print("Loading pre trained model from {}".format(ckpt_path))
         else:

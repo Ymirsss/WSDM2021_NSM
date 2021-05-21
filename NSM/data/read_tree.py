@@ -100,7 +100,7 @@ def search_hierachy(index, parents, node2layer):
     node2layer[index] = parent_layer + 1
     return parent_layer + 1
 
-
+#这一个函数是用来解析数据集给出的dependence parsing的
 def read_tree(edge_list):
     length = len(edge_list)
     parents = []

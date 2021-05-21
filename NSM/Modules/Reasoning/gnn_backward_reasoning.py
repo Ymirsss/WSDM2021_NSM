@@ -35,8 +35,9 @@ class GNNBackwardReasoning(BaseReasoning):
         fact_query = torch.index_select(instruction, dim=0, index=self.batch_ids)
         # fact_val = F.relu(self.kb_self_linear(fact_rel) + self.kb_head_linear(self.linear_drop(fact_ent)))
         fact_val = F.relu(rel_linear(fact_rel) * fact_query)
-        fact_prior = torch.sparse.mm(self.tail2fact_mat, curr_dist.view(-1, 1))
 
+##和gnn_reasoning.py里正儿八经的forward推理不同，这里用到的是tail2fact_mat和fact2head_mat
+        fact_prior = torch.sparse.mm(self.tail2fact_mat, curr_dist.view(-1, 1))
         possible_head = torch.sparse.mm(self.fact2head_mat, fact_prior)
         # (batch_size *max_local_entity, num_fact) (num_fact, 1)
         possible_head = (possible_head > VERY_SMALL_NUMBER).float().view(batch_size, max_local_entity)

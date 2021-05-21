@@ -34,16 +34,20 @@ class GNNReasoning(BaseReasoning):
         fact_rel = torch.index_select(rel_features, dim=0, index=self.batch_rels)
         fact_query = torch.index_select(instruction, dim=0, index=self.batch_ids)
         # fact_val = F.relu(self.kb_self_linear(fact_rel) + self.kb_head_linear(self.linear_drop(fact_ent)))
+        ##根据当前跳的instruction集成relation info(这是m（k）)
         fact_val = F.relu(rel_linear(fact_rel) * fact_query)
+        ##这就是p（k-1）呗
         fact_prior = torch.sparse.mm(self.head2fact_mat, curr_dist.view(-1, 1))
+        ##这是公式未求和的（4）
+        fact_val = fact_val * fact_prior
+        # neighbor_rep = torch.sparse.mm(fact2tail_mat, self.kb_tail_linear(self.linear_drop(fact_val)))
+
+        #这是求和的公式（4）
+        f2e_emb = torch.sparse.mm(self.fact2tail_mat, fact_val)
 
         possible_tail = torch.sparse.mm(self.fact2tail_mat, fact_prior)
         # (batch_size *max_local_entity, num_fact) (num_fact, 1)
         possible_tail = (possible_tail > VERY_SMALL_NUMBER).float().view(batch_size, max_local_entity)
-
-        fact_val = fact_val * fact_prior
-        # neighbor_rep = torch.sparse.mm(fact2tail_mat, self.kb_tail_linear(self.linear_drop(fact_val)))
-        f2e_emb = torch.sparse.mm(self.fact2tail_mat, fact_val)
         assert not torch.isnan(f2e_emb).any()
 
         neighbor_rep = f2e_emb.view(batch_size, max_local_entity, self.entity_dim)
@@ -61,6 +65,7 @@ class GNNReasoning(BaseReasoning):
         self.possible_cand = []
         self.build_matrix()
 
+##进行一跳推理，返回推理得出的当前跳的实体分布
     def forward(self, current_dist, relational_ins, step=0, return_score=False):
         rel_linear = getattr(self, 'rel_linear' + str(step))
         e2e_linear = getattr(self, 'e2e_linear' + str(step))
@@ -68,9 +73,10 @@ class GNNReasoning(BaseReasoning):
         score_func = self.score_func
         relational_ins = relational_ins.squeeze(1)
         neighbor_rep, possible_tail = self.reason_layer(current_dist, relational_ins, rel_linear)
+        ##公式（5）
         next_local_entity_emb = torch.cat((self.local_entity_emb, neighbor_rep), dim=2)
         self.local_entity_emb = F.relu(e2e_linear(self.linear_drop(next_local_entity_emb)))
-
+##score_func是一个线性函数，应该是公式（6）的里面部分 score就是将entity embedding喂进一个线性网络，得到每个entity的score
         score_tp = score_func(self.linear_drop(self.local_entity_emb)).squeeze(dim=2)
         if self.reason_kb:
             answer_mask = self.local_entity_mask * possible_tail
@@ -78,6 +84,8 @@ class GNNReasoning(BaseReasoning):
             answer_mask = self.local_entity_mask
         self.possible_cand.append(answer_mask)
         score_tp = score_tp + (1 - answer_mask) * VERY_NEG_NUMBER
+
+        ##完整的公式（6）
         current_dist = self.softmax_d1(score_tp)
         if return_score:
             return score_tp, current_dist

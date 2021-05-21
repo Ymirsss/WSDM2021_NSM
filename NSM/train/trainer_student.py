@@ -59,8 +59,8 @@ class Trainer_KBQA(object):
         self.evaluator = Evaluator_nsm(args=args, student=self.student, entity2id=self.entity2id,
                                        relation2id=self.relation2id, device=self.device)
         if not args['is_eval']:
-            self.load_pretrain()
-        self.optim_def()
+            self.load_pretrain()#加载训练过的模型
+        self.optim_def()#通过传参加载optimer
 
     def optim_def(self):
         trainable = filter(lambda p: p.requires_grad, self.student.parameters())
@@ -104,7 +104,7 @@ class Trainer_KBQA(object):
 
     def train(self, start_epoch, end_epoch):
         # self.load_pretrain()
-        self.label_data_with_teacher()
+        self.label_data_with_teacher()##每次先训练老师 在老师的学到intermediate signal的基础上训练学生
         eval_every = self.args['eval_every']
         # eval_acc = inference(self.model, self.valid_data, self.entity2id, self.args)
         self.evaluate(self.valid_data, self.test_batch_size, mode="teacher")

@@ -11,9 +11,9 @@ VERY_SMALL_NUMBER = 1e-10
 VERY_NEG_NUMBER = -100000000000
 
 
-def build_model(args, num_entity, num_relation, num_word):
-    model_cls = RWModel
-    return model_cls(args, num_entity, num_relation, num_word)
+# def build_model(args, num_entity, num_relation, num_word):
+    # model_cls = RWModel
+    # return model_cls(args, num_entity, num_relation, num_word)
 
 
 class ForwardReasonModel(BaseModel):
@@ -76,6 +76,7 @@ class ForwardReasonModel(BaseModel):
             # teacher_dist = middle_dist[i].detach()
             teacher_dist = middle_dist[i].squeeze(1).detach()
             # print(curr_dist.size(), teacher_dist.size())
+        #计算student和teacher的loss
             if self.filter_label:
                 assert not (label_valid is None)
                 tp_label_loss = self.calc_loss_label(curr_dist=curr_dist,

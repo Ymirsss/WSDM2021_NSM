@@ -23,8 +23,8 @@ class BasicDataLoader(object):
         self._load_data()
 
     def _load_file(self, config, data_type="train"):
-        data_file = config['data_folder'] + data_type + "_simple.json"
-        dep_file = config['data_folder'] + data_type + ".dep"
+        data_file = config['data_folder'] + data_type + "_simple.json"#dataset file ,每一行描述了一个问题和相应的graph
+        dep_file = config['data_folder'] + data_type + ".dep"#question id，question text，dependency parsing（不需要这个）
         print('loading data from', data_file)
         self.data = []
         self.dep = []
@@ -35,10 +35,10 @@ class BasicDataLoader(object):
                 index += 1
                 line = json.loads(line)
                 if len(line['entities']) == 0:
-                    skip_index.add(index)
+                    skip_index.add(index)#这是要跳过的记录
                     continue
                 self.data.append(line)
-                self.max_facts = max(self.max_facts, 2 * len(line['subgraph']['tuples']))
+                self.max_facts = max(self.max_facts, 2 * len(line['subgraph']['tuples']))#2 * len(line['subgraph']['tuples']是因为有可能逆关系？
         print("skip", skip_index)
         index = 0
         with open(dep_file) as f_in:
@@ -50,7 +50,7 @@ class BasicDataLoader(object):
                 self.dep.append(line)
         print('max_facts: ', self.max_facts)
         self.num_data = len(self.data)
-        self.batches = np.arange(self.num_data)
+        self.batches = np.arange(self.num_data)#生成一个index列表
 
     def _load_data(self):
         print('converting global to local entity index ...')
@@ -60,7 +60,7 @@ class BasicDataLoader(object):
             self.max_facts = self.max_facts + self.max_local_entity
 
         self.question_id = []
-        self.candidate_entities = np.full((self.num_data, self.max_local_entity), len(self.entity2id), dtype=int)
+        self.candidate_entities = np.full((self.num_data, self.max_local_entity), len(self.entity2id), dtype=int)#注意entity2id是entity id列表
         self.kb_adj_mats = np.empty(self.num_data, dtype=object)
         self.q_adj_mats = np.empty(self.num_data, dtype=object)
         # self.kb_fact_rels = np.full((self.num_data, self.max_facts), self.num_kb_relation, dtype=int)
@@ -73,7 +73,7 @@ class BasicDataLoader(object):
 
         if self.q_type == "con":
             print('preparing con ...')
-            self._prepare_con()
+            self._prepare_con()##不知道是不是真的 这个方法也直接search不到了
         else:
             print('preparing dep ...')
             self._prepare_dep()
@@ -143,6 +143,7 @@ class BasicDataLoader(object):
                 tp_str += id2word[np_array_x[i]] + " "
         return tp_str
 
+##这个就是 对数据集中的dependency parsing 进行处理 但论文实验好像没有用到
     def _prepare_dep(self):
         max_count = 0
         for line in self.dep:
@@ -155,8 +156,8 @@ class BasicDataLoader(object):
         self.node2layer = []
         self.dep_parents = []
         self.dep_relations = []
-        for sample in tqdm(self.dep):
-            tp_dep = sample["dep"]
+        for sample in tqdm(self.dep):#self.dep就是筛选出来（筛掉非空）的data
+            tp_dep = sample["dep"]#q的dependence parsing
             node_layer, parents, relations = read_tree(tp_dep)
             # self.layer2node.append(layer2node)
             self.node2layer.append(node_layer)
@@ -189,28 +190,28 @@ class BasicDataLoader(object):
         for sample in tqdm(self.data):
             self.question_id.append(sample["id"])
             # get a list of local entities
-            g2l = self.global2local_entity_maps[next_id]
+            g2l = self.global2local_entity_maps[next_id]#获取每一条记录 的所有 entities（包括全局和subgraph实体），{entities id:index,entities id:index,.....}
             if len(g2l) == 0:
                 print(next_id)
                 continue
-            # build connection between question and entities in it
+            # build connection between question and entities in it在实体和问题之间建立联系
             tp_set = set()
             seed_list = []
-            for j, entity in enumerate(sample['entities']):
+            for j, entity in enumerate(sample['entities']):#这里的entity是global——entities，即query中的entities
                 # if entity['text'] not in self.entity2id:
                 #     continue
                 global_entity = entity  # self.entity2id[entity['text']]
                 if global_entity not in g2l:
                     continue
-                local_ent = g2l[global_entity]
-                self.query_entities[next_id, local_ent] = 1.0
+                local_ent = g2l[global_entity]#这里返回的global—_entities的局部index
+                self.query_entities[next_id, local_ent] = 1.0#next_id对应每一条数据/记录     将query entitie位置设为1
                 seed_list.append(local_ent)
                 tp_set.add(local_ent)
             self.seed_list[next_id] = seed_list
             num_query_entity[next_id] = len(tp_set)
             for global_entity, local_entity in g2l.items():
                 if local_entity not in tp_set:  # skip entities in question
-                    self.candidate_entities[next_id, local_entity] = global_entity
+                    self.candidate_entities[next_id, local_entity] = global_entity#将处query entities以外的实体对应位置设为其id
                 # if local_entity != 0:  # skip question node
                 #     self.candidate_entities[next_id, local_entity] = global_entity
 
@@ -223,19 +224,19 @@ class BasicDataLoader(object):
                 # head = g2l[self.entity2id[sbj['text']]]
                 # rel = self.relation2id[rel['text']]
                 # tail = g2l[self.entity2id[obj['text']]]
-                head = g2l[sbj]
+                head = g2l[sbj]#head tail都是其局部下标
                 rel = int(rel)
                 tail = g2l[obj]
                 head_list.append(head)
                 rel_list.append(rel)
                 tail_list.append(tail)
-                if self.use_inverse_relation:
+                if self.use_inverse_relation:#加入inverse fact
                     head_list.append(tail)
                     rel_list.append(rel + len(self.relation2id))
                     tail_list.append(head)
             if len(tp_set) > 0:
                 for local_ent in tp_set:
-                    self.seed_distribution[next_id, local_ent] = 1.0 / len(tp_set)
+                    self.seed_distribution[next_id, local_ent] = 1.0 / len(tp_set)##query entiies的分布（简单的均值概率）
             else:
                 for index in range(len(g2l)):
                     self.seed_distribution[next_id, index] = 1.0 / len(g2l)
@@ -262,13 +263,14 @@ class BasicDataLoader(object):
                 answer_ent = self.entity2id[answer[keyword]]
                 answer_list.append(answer_ent)
                 if answer_ent in g2l:
-                    self.answer_dists[next_id, g2l[answer_ent]] = 1.0
+                    self.answer_dists[next_id, g2l[answer_ent]] = 1.0##把答案实体对应的位置设置为1
             self.answer_lists[next_id] = answer_list
-            self.kb_adj_mats[next_id] = (np.array(head_list, dtype=int),
+            self.kb_adj_mats[next_id] = (np.array(head_list, dtype=int),##每条记录所有entities（全局和subgraph )index对应的矩阵
                                          np.array(rel_list, dtype=int),
                                          np.array(tail_list, dtype=int))
 
             next_id += 1
+        #以下是统计query类型（按照对应的entities数量）
         num_no_query_ent = 0
         num_one_query_ent = 0
         num_multiple_ent = 0
@@ -355,10 +357,10 @@ class BasicDataLoader(object):
         batch_ids = np.array([], dtype=int)
         for i, sample_id in enumerate(sample_ids):
             index_bias = i * self.max_local_entity
-            head_list, rel_list, tail_list = self.kb_adj_mats[sample_id]
+            head_list, rel_list, tail_list = self.kb_adj_mats[sample_id] #每一条数据的head relation tail矩阵
             num_fact = len(head_list)
-            num_keep_fact = int(np.floor(num_fact * (1 - fact_dropout)))
-            mask_index = np.random.permutation(num_fact)[: num_keep_fact]
+            num_keep_fact = int(np.floor(num_fact * (1 - fact_dropout)))#np.floor 向下取整 这一句是对fact进行dropout
+            mask_index = np.random.permutation(num_fact)[: num_keep_fact]#打乱所有facts index之后，dropput
 
             real_head_list = head_list[mask_index] + index_bias
             real_tail_list = tail_list[mask_index] + index_bias
@@ -409,6 +411,10 @@ class BasicDataLoader(object):
         print('avg local entity: ', total_local_entity / next_id)
         print('max local entity: ', self.max_local_entity)
         return global2local_entity_maps
+    # global2local_entity_maps就是一条记录对应一个dict 里面是{实体id:index} 所以这是一个全局的list 但每一条存放的是局部信息
+    '''
+    global2local_entity_maps=[{实体id(包括全局和subgraph):0,id:1,id:2,...},{id:0,id:1,id:2,...},{...},...](注意：每个dic的value，即index都重新编号)
+    '''
 
     @staticmethod
     def _add_entity_to_map(entity2id, entities, g2l):
@@ -420,7 +426,7 @@ class BasicDataLoader(object):
             # print(entity_global_id)
             # print(entity_global_id)
             if entity_global_id not in g2l:
-                g2l[entity_global_id] = len(g2l)
+                g2l[entity_global_id] = len(g2l)# len(g2l)不是字典的长度吗  也就是说，第一个entity对应的value是1 第二个对应的value是2 这样子？
 
     def deal_q_type(self, q_type=None):
         sample_ids = self.sample_ids

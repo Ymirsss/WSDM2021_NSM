@@ -38,8 +38,9 @@ class GNNModel(BaseModel):
     def init_reason(self, curr_dist, local_entity, kb_adj_mat, q_input):
         # batch_size = local_entity.size(0)
         self.local_entity = local_entity
+             #query每一个word对应的hiddenstate的att和全部K跳推理的instructionvector
         self.instruction_list, self.attn_list = self.instruction(q_input)
-        self.rel_features = self.get_rel_feature()
+        self.rel_features = self.get_rel_feature()##映射到和instructor/entity embedding同一个空间后的relation embedding
         self.local_entity_emb = self.get_ent_init(local_entity, kb_adj_mat, self.rel_features)
         self.curr_dist = curr_dist
         self.dist_history = [curr_dist]

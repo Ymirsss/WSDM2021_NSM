@@ -33,4 +33,8 @@ class TeacherAgent_hybrid(BaseAgent):
         return middle_dist, label_valid
 
     def deal_input(self, batch):
+        #来自BaseAgent
+        # #将batch数据的numpy转化为tensor并挂载到device上面
+        #current_dist, query_text, query_mask, kb_adj_mat, answer_dist, \
+        #local_entity, query_entities, true_batch_id
         return self.deal_input_seq(batch)

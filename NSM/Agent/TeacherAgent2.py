@@ -55,6 +55,7 @@ class TeacherAgent_parallel(BaseAgent):
 
     def forward(self, batch, training=False):
         batch = self.deal_input(batch)
+        #这里只有forward loss
         loss, pred, pred_dist, tp_list = self.model(batch, training=training)
         extras = [loss.item()]
         if training:
@@ -65,7 +66,9 @@ class TeacherAgent_parallel(BaseAgent):
             back_loss, _, _, _ = self.back_model(batch, training=training)
             forward_history = self.model.dist_history
             backward_history = self.back_model.dist_history
+            ##前向和后向是否一致的损失
             constrain_loss = self.get_constraint_loss(forward_history, backward_history, case_valid)
+            ##论文中公式（9）
             loss = loss + self.lambda_back * back_loss + self.lambda_constrain * constrain_loss
             extras.append(back_loss.item())
             extras.append(constrain_loss.item())
@@ -83,7 +86,7 @@ class TeacherAgent_parallel(BaseAgent):
             middle_dist.append((forward_history[i + 1] + backward_history[i + 1]) / 2)
         current_dist, q_input, query_mask, kb_adj_mat, answer_dist, \
         local_entity, query_entities, true_batch_id = batch
-        pred_dist = self.model.dist_history[-1]
+        pred_dist = self.model.dist_history[-1]##读取前向最后一跳结果，即预测的答案
         label_valid = self.model.get_label_valid(pred_dist, answer_dist, label_f1=self.label_f1)
         return middle_dist, label_valid
 

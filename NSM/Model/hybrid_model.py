@@ -60,6 +60,7 @@ class HybridModel(BaseModel):
                                    rel_features=self.rel_features,
                                    query_node_emb=self.query_node_emb)
 
+#一次前向过程
     def one_step(self, num_step):
         # relational_ins, attn_weight = self.instruction.get_instruction(self.relational_ins, query_mask, step=num_step)
         relational_ins = self.instruction_list[num_step]
@@ -77,6 +78,7 @@ class HybridModel(BaseModel):
         loss = 0.5 * (self.kld_loss_1(log_mean_dist, dist_1) + self.kld_loss_1(log_mean_dist, dist_2))
         return loss
 
+#计算teacher和student的loss
     def calc_loss_label(self, curr_dist, teacher_dist, label_valid):
         tp_loss = self.get_loss_new(pred_dist=curr_dist, answer_dist=teacher_dist, reduction='none')
         tp_loss = tp_loss * label_valid

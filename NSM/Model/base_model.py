@@ -72,6 +72,7 @@ class BaseModel(torch.nn.Module):
         self.encode_type = args["encode_type"]
         self.reason_kb = args['reason_kb']
         self.eps = args['eps']
+        self.batch_size = args['batch_size']
 
         self.loss_type = args['loss_type']
         # self.lambda_label = args['lambda_label']
@@ -88,9 +89,10 @@ class BaseModel(torch.nn.Module):
                     setattr(self, k, args['data_folder'] + v)
 
         self.reset_time = 0
-
+##声明一些要用到的函数、参数、变量
     def share_module_def(self):
         # initialize entity embedding
+        ##初始化实体和关系的线性影射函数
         word_dim = self.word_dim
         kg_dim = self.kg_dim
         kge_dim = self.kge_dim
@@ -117,10 +119,12 @@ class BaseModel(torch.nn.Module):
         self.bce_loss_logits = nn.BCEWithLogitsLoss(reduction='none')
         self.mse_loss = torch.nn.MSELoss()
 
+##获取基于relation和消息传播机制更新得到的实体embedding
     def get_ent_init(self, local_entity, kb_adj_mat, rel_features):
         # batch_size, max_local_entity = local_entity.size()
         # hidden_size = self.entity_dim
         if self.encode_type:
+            #我猜这里的encode_type用于消融实验，设置是否采用【基于relation和消息传播机制的实体更新方法】
             local_entity_emb = self.type_layer(local_entity=local_entity,
                                                edge_list=kb_adj_mat,
                                                rel_features=rel_features)
@@ -161,12 +165,12 @@ class BaseModel(torch.nn.Module):
             else:
                 self.entity_kge = None
 
-        # initialize relation embedding
+        # initialize relation embedding初始化relation embedding
         self.relation_embedding = nn.Embedding(num_embeddings=num_relation, embedding_dim=2 * kg_dim)
-        if self.relation_emb_file is not None:
+        if self.relation_emb_file is not None:#如果有embedding file 则用它初始化
             np_tensor = self.load_relation_file(self.relation_emb_file)
             self.relation_embedding.weight = nn.Parameter(torch.from_numpy(np_tensor).type('torch.FloatTensor'))
-        if self.relation_kge_file is not None:
+        if self.relation_kge_file is not None:##如果relation有KGE的embedding 则用该文件初始化relation_kge，如果有的话 后续关系relation embedding会在原本embedding基础上拼接KGE
             self.has_relation_kge = True
             self.relation_kge = nn.Embedding(num_embeddings=num_relation, embedding_dim=kge_dim)
             np_tensor = self.load_relation_file(self.relation_kge_file)
@@ -336,7 +340,7 @@ class BaseModel(torch.nn.Module):
         return (h1 > 0).float()
     
     def get_eval_metric(self, pred_dist, answer_dist):
-        with torch.no_grad():
+        with torch.no_grad():#本句表示梯度下降不会对以下语句求导
             h1 = self.calc_h1(curr_dist=pred_dist, dist_ans=answer_dist, eps=VERY_SMALL_NUMBER)
             f1 = self.calc_f1_new(pred_dist, answer_dist, h1)
         return h1, f1
@@ -362,6 +366,7 @@ class BaseModel(torch.nn.Module):
                 align_loss += self.mse_loss(cur_dist, other_dist)
         return align_loss
 
+##前后向分布对齐loss （论文中公式（8））
     def get_dist_align_loss(self, dist_history):
         align_loss = None
         for i in range(self.num_step - 1):
@@ -445,6 +450,7 @@ class BaseModel(torch.nn.Module):
         return loss, extras
 
     def calc_loss(self, answer_dist, use_label=False, label_dist=None, label_valid=None):
+
         extras = []
         pred_dist = self.dist_history[-1]
         if use_label and self.num_step > 1:
@@ -456,7 +462,7 @@ class BaseModel(torch.nn.Module):
                 main_loss = torch.mean(main_loss)
             elif self.loss_type == "kl":
                 # batchmean
-                main_loss = torch.sum(main_loss) / batch_size
+                main_loss = torch.sum(main_loss) / self.batch_size
             else:
                 raise NotImplementedError
             # label_valid = torch.from_numpy(label_valid).type('torch.FloatTensor').to(self.device)

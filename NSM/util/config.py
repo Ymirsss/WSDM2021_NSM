@@ -25,6 +25,7 @@ def get_config(config_path=None):
         parser.add_argument('--max_rel_words', default=8, type=int)
 
         # embeddings
+        #这里好像文件名改了 好多文件也没有 不知道真正跑的时候需不需要改一下
         parser.add_argument('--word2id', default='glove_vocab.txt', type=str)
         parser.add_argument('--relation2id', default='relations.txt', type=str)
         parser.add_argument('--entity2id', default='entities.txt', type=str)
